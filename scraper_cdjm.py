@@ -16,6 +16,7 @@ API_URL = "https://yannguegan.pythonanywhere.com/data/dzc/cdjm-data.json"
 PDF_BASE = "https://cdjm.org/files/avis/"
 
 STATUS_MAP = {
+    "1- Saisine non fond": "Non fondée",
     "2- Saisine partiellement fond": "Partiellement fondée",
     "3- Saisine fond": "Fondée",
 }

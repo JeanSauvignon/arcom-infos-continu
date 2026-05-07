@@ -537,7 +537,9 @@ function renderLineChart() {
   const el = document.getElementById('chart-line');
   if (!lineChart) lineChart = echarts.init(el, null, { renderer: 'canvas' });
 
-  const globalMin = ALL.map(d => d.date).sort()[0];
+  const sorted = ALL.map(d => d.date).sort();
+  const globalMin = sorted[0];
+  const globalMax = sorted[sorted.length - 1];
 
   const series = CHANNELS.map(ch => {
     const byDate = {};
@@ -549,8 +551,9 @@ function renderLineChart() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, n]) => { cum += n; return [date, cum]; });
 
-    // Point de départ à 0 pour que toutes les chaînes partent du même x
+    // Même origine et même fin pour toutes les chaînes
     const data = [[globalMin, 0], ...points];
+    if (data[data.length - 1][0] !== globalMax) data.push([globalMax, cum]);
 
     return {
       name: ch, type: 'line',

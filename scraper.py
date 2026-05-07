@@ -229,11 +229,20 @@ def main():
     OUTPUT_FILE.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Fichier mis à jour : {OUTPUT_FILE}")
 
-    # Génère aussi data.js pour usage direct sans serveur (file://)
-    js_file = OUTPUT_FILE.parent / "data.js"
-    js_content = "window.ARCOM_DATA = " + json.dumps(output, ensure_ascii=False, indent=2) + ";"
-    js_file.write_text(js_content, encoding="utf-8")
-    print(f"Fichier mis à jour : {js_file}")
+    # Injecte les données inline dans index.html (fonctionne sans serveur)
+    html_file = OUTPUT_FILE.parent / "index.html"
+    if html_file.exists():
+        import re as _re
+        html = html_file.read_text(encoding="utf-8")
+        inline = json.dumps(output, ensure_ascii=False, separators=(",", ":"))
+        html = _re.sub(
+            r"<script>window\.ARCOM_DATA = .*?;</script>",
+            f"<script>window.ARCOM_DATA = {inline};</script>",
+            html,
+            flags=_re.DOTALL,
+        )
+        html_file.write_text(html, encoding="utf-8")
+        print(f"Données injectées dans : {html_file}")
 
 
 if __name__ == "__main__":

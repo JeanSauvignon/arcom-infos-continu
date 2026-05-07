@@ -58,6 +58,12 @@ def build_avis(raw_avis: list[dict]) -> list[dict]:
         if not medium:
             continue
         avis_id = a.get("id", "").strip()
+        # Sanity-check: CDJM was created in 2019; if date_decision is earlier,
+        # derive the year from the ID prefix (e.g. "24-105" → 2024).
+        if date_decision < "2019-01-01" and re.match(r"(\d{2})-\d+", avis_id):
+            yy = int(re.match(r"(\d{2})-\d+", avis_id).group(1))
+            yyyy = 2000 + yy
+            date_decision = f"{yyyy}{date_decision[4:]}"
         result.append(
             {
                 "id": avis_id,

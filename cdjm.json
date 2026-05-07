@@ -923,6 +923,14 @@
       "url": "https://cdjm.org/files/avis/24-122.pdf"
     },
     {
+      "id": "24-105",
+      "date": "2024-12-05",
+      "medium": "CNews",
+      "topic": "Propos de Rachel Kahn sur des « sourates » dans son taxi",
+      "status": "Partiellement fondée",
+      "url": "https://cdjm.org/files/avis/24-105.pdf"
+    },
+    {
       "id": "24-057",
       "date": "2024-11-07",
       "medium": "CNews",
@@ -2561,14 +2569,6 @@
       "topic": "Photo de l’arrestation de M. Piotr Pavlenski",
       "status": "Non fondée",
       "url": "https://cdjm.org/files/avis/20-044.pdf"
-    },
-    {
-      "id": "24-105",
-      "date": "2005-12-05",
-      "medium": "CNews",
-      "topic": "Propos de Rachel Kahn sur des « sourates » dans son taxi",
-      "status": "Partiellement fondée",
-      "url": "https://cdjm.org/files/avis/24-105.pdf"
     }
   ]
 }

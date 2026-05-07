@@ -227,7 +227,13 @@ def main():
         "decisions": decisions,
     }
     OUTPUT_FILE.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nFichier mis à jour : {OUTPUT_FILE}")
+    print(f"Fichier mis à jour : {OUTPUT_FILE}")
+
+    # Génère aussi data.js pour usage direct sans serveur (file://)
+    js_file = OUTPUT_FILE.parent / "data.js"
+    js_content = "window.ARCOM_DATA = " + json.dumps(output, ensure_ascii=False, indent=2) + ";"
+    js_file.write_text(js_content, encoding="utf-8")
+    print(f"Fichier mis à jour : {js_file}")
 
 
 if __name__ == "__main__":

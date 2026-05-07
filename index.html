@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Décisions Arcom – Chaînes d'info en continu</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="data.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -633,19 +634,15 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 });
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
-fetch('decisions.json')
-  .then(r => r.json())
-  .then(data => {
+function init(data) {
     ALL = data.decisions.slice().sort((a,b) => b.date.localeCompare(a.date));
 
-    // Last updated
     const lu = data.last_updated;
     if (lu) {
       const [y,m,d] = lu.split('-');
       document.getElementById('last-updated').textContent = `Mis à jour le ${d}/${m}/${y}`;
     }
 
-    // Year filter options
     const years = [...new Set(ALL.map(d => d.date.slice(0,4)))].sort().reverse();
     const sel = document.getElementById('f-year');
     years.forEach(y => {
@@ -658,12 +655,14 @@ fetch('decisions.json')
     renderBarChart(ALL);
     renderLineChart(ALL);
     renderTable();
-  })
-  .catch(err => {
-    console.error('Erreur de chargement :', err);
-    document.getElementById('table-body').innerHTML =
-      `<tr><td colspan="4" class="no-results">Erreur de chargement des données.</td></tr>`;
-  });
+}
+
+if (window.ARCOM_DATA) {
+  init(window.ARCOM_DATA);
+} else {
+  document.getElementById('table-body').innerHTML =
+    `<tr><td colspan="4" class="no-results">Données introuvables — lancez le scraper ou vérifiez que data.js est présent.</td></tr>`;
+}
 </script>
 </body>
 </html>

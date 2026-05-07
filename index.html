@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Décisions Arcom – Chaînes d'info en continu</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bfm:   #E30613;
+      --cnews: #1D2A5F;
+      --lci:   #FF6B00;
+      --fi:    #003189;
+      --intervention:  #6366f1;
+      --garde:         #f59e0b;
+      --demeure:       #ef4444;
+      --sanction:      #7c3aed;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #273548;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #0d1b35 0%, #1a2f5a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    header h1 span { color: #60a5fa; }
+    .header-meta {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .header-meta a { color: #60a5fa; text-decoration: none; }
+    .header-meta a:hover { text-decoration: underline; }
+    .badge-updated {
+      background: #1e3a5f;
+      border: 1px solid #2563eb;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      color: #93c5fd;
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Channel cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 20px;
+      border-top: 3px solid var(--accent);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .card[data-channel="BFM TV"]   { --accent: var(--bfm); }
+    .card[data-channel="CNews"]    { --accent: var(--cnews); }
+    .card[data-channel="LCI"]      { --accent: var(--lci); }
+    .card[data-channel="Franceinfo"] { --accent: var(--fi); }
+    .card-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    .card-total {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+    .card-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+    }
+    .breakdown-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .breakdown-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .breakdown-count {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── Charts ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 800px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .chart-box h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .chart-wrap { position: relative; height: 260px; }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .filter-group label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    select, input[type="text"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color .15s;
+      min-width: 160px;
+    }
+    select:focus, input[type="text"]:focus { border-color: #60a5fa; }
+    .filter-reset {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all .15s;
+      align-self: flex-end;
+    }
+    .filter-reset:hover { border-color: var(--text); color: var(--text); }
+    .filter-count {
+      align-self: flex-end;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding-bottom: 8px;
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+    thead th {
+      background: var(--surface2);
+      padding: 11px 16px;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sorted { color: #60a5fa; }
+    thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+    thead th.sorted .sort-icon { opacity: 1; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: 11px 16px; vertical-align: top; }
+
+    .cell-date {
+      white-space: nowrap;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.8rem;
+    }
+    .cell-channel {
+      white-space: nowrap;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+    .cell-channel[data-ch="BFM TV"]    { color: var(--bfm); }
+    .cell-channel[data-ch="CNews"]     { color: #4d7de8; }
+    .cell-channel[data-ch="LCI"]       { color: var(--lci); }
+    .cell-channel[data-ch="Franceinfo"]{ color: #60a5fa; }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .type-badge.intervention { background: rgba(99,102,241,.15); color: #a5b4fc; }
+    .type-badge.garde        { background: rgba(245,158,11,.15); color: #fcd34d; }
+    .type-badge.demeure      { background: rgba(239,68,68,.15);  color: #fca5a5; }
+    .type-badge.sanction     { background: rgba(124,58,237,.15); color: #c4b5fd; }
+
+    .cell-title { line-height: 1.4; }
+    .cell-title a {
+      color: var(--text);
+      text-decoration: none;
+    }
+    .cell-title a:hover { color: #60a5fa; }
+
+    .no-results {
+      padding: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: #60a5fa; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Décisions <span>Arcom</span> — Chaînes d'info en continu</h1>
+  <div class="header-meta">
+    <span class="badge-updated" id="last-updated">Chargement…</span>
+    <span>France Info TV · LCI · BFMTV · CNews</span>
+    <a href="https://www.arcom.fr/se-documenter/espace-juridique/decisions?field_type_de_decision_target_id%5B23%5D=23&field_type_de_decision_target_id%5B11%5D=11&field_type_de_decision_target_id%5B22%5D=22&field_type_de_decision_target_id%5B262%5D=262&sort_bef_combine=field_date_de_decision_value_DESC" target="_blank" rel="noopener">↗ Source : arcom.fr</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Cartes chaînes ── -->
+  <section>
+    <div class="section-title">Synthèse par chaîne</div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- ── Graphiques ── -->
+  <section>
+    <div class="section-title">Visualisation</div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Décisions par type et par chaîne</h3>
+        <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>Évolution dans le temps (cumul par chaîne)</h3>
+        <div class="chart-wrap"><canvas id="chart-line"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Filtres ── -->
+  <section>
+    <div class="section-title">Tableau des décisions</div>
+    <div class="filters" style="margin-bottom:16px;">
+      <div class="filter-group">
+        <label for="f-channel">Chaîne</label>
+        <select id="f-channel">
+          <option value="">Toutes</option>
+          <option>BFM TV</option>
+          <option>CNews</option>
+          <option>LCI</option>
+          <option>Franceinfo</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="f-type">Type</label>
+        <select id="f-type">
+          <option value="">Tous</option>
+          <option>Intervention</option>
+          <option>Mise en garde</option>
+          <option>Mise en demeure</option>
+          <option>Sanction financière</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="f-year">Année</label>
+        <select id="f-year">
+          <option value="">Toutes</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="f-search">Recherche</label>
+        <input type="text" id="f-search" placeholder="Titre…" style="min-width:220px;">
+      </div>
+      <button class="filter-reset" id="btn-reset">Réinitialiser</button>
+      <span class="filter-count" id="filter-count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-col="date" class="sorted">Date <span class="sort-icon">↓</span></th>
+            <th data-col="channel">Chaîne <span class="sort-icon">↕</span></th>
+            <th data-col="type">Type <span class="sort-icon">↕</span></th>
+            <th data-col="title" style="width:100%">Décision</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+      <div class="no-results" id="no-results" style="display:none">Aucune décision ne correspond aux filtres.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Données : <a href="https://www.arcom.fr" target="_blank" rel="noopener">Arcom</a> — Autorité de régulation de la communication audiovisuelle et numérique.
+  Dashboard open-source : <a href="https://github.com/jeansorrel/arcom-infos-continu" target="_blank" rel="noopener">GitHub</a>.
+</footer>
+
+<script>
+// ── Palette ──────────────────────────────────────────────────────────────
+const CHANNEL_COLOR = {
+  'BFM TV':    '#E30613',
+  'CNews':     '#4d7de8',
+  'LCI':       '#FF6B00',
+  'Franceinfo':'#3b82f6',
+};
+const CHANNELS = ['BFM TV', 'CNews', 'LCI', 'Franceinfo'];
+const TYPES    = ['Intervention', 'Mise en garde', 'Mise en demeure', 'Sanction financière'];
+const TYPE_CLASS = {
+  'Intervention':     'intervention',
+  'Mise en garde':    'garde',
+  'Mise en demeure':  'demeure',
+  'Sanction financière': 'sanction',
+};
+const TYPE_COLOR = {
+  'Intervention':        'rgba(99,102,241,.8)',
+  'Mise en garde':       'rgba(245,158,11,.8)',
+  'Mise en demeure':     'rgba(239,68,68,.8)',
+  'Sanction financière': 'rgba(124,58,237,.8)',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────
+let ALL = [];
+let sortCol = 'date', sortDir = -1; // -1 = desc
+
+// ── Utility ───────────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────
+function renderCards(decisions) {
+  const container = document.getElementById('cards');
+  container.innerHTML = '';
+  CHANNELS.forEach(ch => {
+    const rows = decisions.filter(d => d.channel === ch);
+    const byType = {};
+    TYPES.forEach(t => byType[t] = 0);
+    rows.forEach(d => { if (byType[d.type] !== undefined) byType[d.type]++; });
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.channel = ch;
+    card.innerHTML = `
+      <div class="card-name"><span class="card-dot"></span>${ch}</div>
+      <div class="card-total">${rows.length}</div>
+      <div class="card-breakdown">
+        ${TYPES.map(t => `
+          <div class="breakdown-row">
+            <span class="breakdown-label">
+              <span class="breakdown-dot" style="background:${TYPE_COLOR[t].replace('.8','1')}"></span>
+              ${t}
+            </span>
+            <span class="breakdown-count">${byType[t]}</span>
+          </div>`).join('')}
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+// ── Bar chart ─────────────────────────────────────────────────────────────
+let barChart, lineChart;
+
+function renderBarChart(decisions) {
+  const ctx = document.getElementById('chart-bar').getContext('2d');
+  const datasets = TYPES.map(t => ({
+    label: t,
+    data: CHANNELS.map(ch => decisions.filter(d => d.channel === ch && d.type === t).length),
+    backgroundColor: TYPE_COLOR[t],
+    borderRadius: 4,
+    borderSkipped: false,
+  }));
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: CHANNELS, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { mode: 'index', callbacks: {
+          title: items => items[0].label,
+        }},
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { stacked: true, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+// ── Line chart ────────────────────────────────────────────────────────────
+function renderLineChart(decisions) {
+  const ctx = document.getElementById('chart-line').getContext('2d');
+
+  // Build sorted list of months (YYYY-MM)
+  const months = [...new Set(decisions.map(d => d.date.slice(0, 7)))].sort();
+
+  const datasets = CHANNELS.map(ch => {
+    let cum = 0;
+    const data = months.map(m => {
+      cum += decisions.filter(d => d.channel === ch && d.date.slice(0, 7) === m).length;
+      return cum;
+    });
+    return {
+      label: ch,
+      data,
+      borderColor: CHANNEL_COLOR[ch],
+      backgroundColor: CHANNEL_COLOR[ch] + '22',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+      borderWidth: 2,
+    };
+  });
+
+  // Format x labels as MMM YYYY
+  const labels = months.map(m => {
+    const [y, mo] = m.split('-');
+    const d = new Date(+y, +mo - 1);
+    return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+  });
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+function getFiltered() {
+  const ch   = document.getElementById('f-channel').value;
+  const tp   = document.getElementById('f-type').value;
+  const yr   = document.getElementById('f-year').value;
+  const q    = document.getElementById('f-search').value.toLowerCase();
+
+  return ALL.filter(d =>
+    (!ch || d.channel === ch) &&
+    (!tp || d.type === tp) &&
+    (!yr || d.date.startsWith(yr)) &&
+    (!q  || d.title.toLowerCase().includes(q))
+  );
+}
+
+function renderTable() {
+  const data = getFiltered().slice().sort((a, b) => {
+    let va = a[sortCol] || '', vb = b[sortCol] || '';
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return  1 * sortDir;
+    return 0;
+  });
+
+  const tbody = document.getElementById('table-body');
+  const noResults = document.getElementById('no-results');
+  document.getElementById('filter-count').textContent = `${data.length} décision${data.length !== 1 ? 's' : ''}`;
+
+  if (!data.length) {
+    tbody.innerHTML = '';
+    noResults.style.display = '';
+    return;
+  }
+  noResults.style.display = 'none';
+
+  tbody.innerHTML = data.map(d => {
+    const badge = `<span class="type-badge ${TYPE_CLASS[d.type] || ''}">${d.type}</span>`;
+    const link = d.url
+      ? `<a href="${d.url}" target="_blank" rel="noopener">${escHtml(d.title)}</a>`
+      : escHtml(d.title);
+    return `<tr>
+      <td class="cell-date">${fmtDate(d.date)}</td>
+      <td class="cell-channel" data-ch="${escHtml(d.channel)}">${escHtml(d.channel)}</td>
+      <td>${badge}</td>
+      <td class="cell-title">${link}</td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Sort ──────────────────────────────────────────────────────────────────
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = -1; }
+    document.querySelectorAll('thead th').forEach(t => {
+      t.classList.toggle('sorted', t.dataset.col === sortCol);
+      const icon = t.querySelector('.sort-icon');
+      if (icon) icon.textContent = t.dataset.col === sortCol ? (sortDir === -1 ? '↓' : '↑') : '↕';
+    });
+    renderTable();
+  });
+});
+
+// ── Filters ───────────────────────────────────────────────────────────────
+['f-channel','f-type','f-year','f-search'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderTable);
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  ['f-channel','f-type','f-year','f-search'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderTable();
+});
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+fetch('decisions.json')
+  .then(r => r.json())
+  .then(data => {
+    ALL = data.decisions.slice().sort((a,b) => b.date.localeCompare(a.date));
+
+    // Last updated
+    const lu = data.last_updated;
+    if (lu) {
+      const [y,m,d] = lu.split('-');
+      document.getElementById('last-updated').textContent = `Mis à jour le ${d}/${m}/${y}`;
+    }
+
+    // Year filter options
+    const years = [...new Set(ALL.map(d => d.date.slice(0,4)))].sort().reverse();
+    const sel = document.getElementById('f-year');
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      sel.appendChild(opt);
+    });
+
+    renderCards(ALL);
+    renderBarChart(ALL);
+    renderLineChart(ALL);
+    renderTable();
+  })
+  .catch(err => {
+    console.error('Erreur de chargement :', err);
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="4" class="no-results">Erreur de chargement des données.</td></tr>`;
+  });
+</script>
+</body>
+</html>

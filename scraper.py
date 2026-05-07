@@ -82,15 +82,44 @@ def detect_channels(title: str) -> list[str]:
     return matched
 
 
+FRENCH_MONTHS = {
+    "janvier": "01", "février": "02", "mars": "03", "avril": "04",
+    "mai": "05", "juin": "06", "juillet": "07", "août": "08",
+    "septembre": "09", "octobre": "10", "novembre": "11", "décembre": "12",
+}
+
+
 def parse_date(raw: str) -> str | None:
-    """Convert DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD."""
+    """Convert DD/MM/YYYY, YYYY-MM-DD, or '03 mai 2026' to YYYY-MM-DD."""
     raw = raw.strip()
     try:
         if re.match(r"\d{2}/\d{2}/\d{4}", raw):
             return datetime.strptime(raw, "%d/%m/%Y").strftime("%Y-%m-%d")
         if re.match(r"\d{4}-\d{2}-\d{2}", raw):
             return raw
+        # French long-form: "03 mai 2026"
+        m = re.match(r"(\d{1,2})\s+(\w+)\s+(\d{4})", raw)
+        if m:
+            day, month_str, year = m.group(1), m.group(2).lower(), m.group(3)
+            month = FRENCH_MONTHS.get(month_str)
+            if month:
+                return f"{year}-{month}-{int(day):02d}"
     except ValueError:
+        pass
+    return None
+
+
+def fetch_publication_date(url: str) -> str | None:
+    """Fetch the 'Publié le' date from an individual decision page."""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=30)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup.find_all(string=re.compile(r"Publié\s+le", re.I)):
+            m = re.search(r"Publié\s+le\s+(\d{1,2}\s+\w+\s+\d{4})", str(tag), re.I)
+            if m:
+                return parse_date(m.group(1))
+    except Exception:
         pass
     return None
 
@@ -141,12 +170,22 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
         if not decision_type:
             decision_type = normalize_type(title)
 
-        if not parsed_date or not decision_type:
+        if not decision_type:
             continue
 
         # Channels
         channels = detect_channels(title)
         if not channels:
+            continue
+
+        # Fetch the real publication date from the decision page
+        if url:
+            pub_date = fetch_publication_date(url)
+            time.sleep(0.5)
+            if pub_date:
+                parsed_date = pub_date
+
+        if not parsed_date:
             continue
 
         for channel in channels:

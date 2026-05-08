@@ -134,16 +134,16 @@ def fetch_page(page: int = 0) -> BeautifulSoup:
 def parse_decisions(soup: BeautifulSoup) -> list[dict]:
     decisions = []
 
-    # The ARCOM page uses Drupal views — rows are <article> elements or <li class="views-row">
-    rows = soup.select("article.node--type-decision, li.views-row, .view-content article")
+    # New ARCOM structure (2026): .views-row > .card.card-v3
+    rows = soup.select("div.views-row")
 
     if not rows:
-        # Fallback: look for any article with a date
-        rows = soup.select("article")
+        # Legacy fallback
+        rows = soup.select("article.node--type-decision, li.views-row, .view-content article")
 
     for row in rows:
-        # Title
-        title_el = row.select_one("h3 a, h2 a, .node__title a, .field--name-title a")
+        # Title + URL
+        title_el = row.select_one("h2.card-title a, h3 a, h2 a, .node__title a, .field--name-title a")
         if not title_el:
             continue
         title = title_el.get_text(strip=True)
@@ -151,8 +151,9 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
         if url and not url.startswith("http"):
             url = "https://www.arcom.fr" + url
 
-        # Date
+        # Date — new structure: first <li> in .card-infos .tag-list ("04 mai 2026")
         date_el = row.select_one(
+            ".card-infos ul.tag-list li, "
             ".field--name-field-date-de-decision time, time[datetime], .date-display-single"
         )
         raw_date = ""
@@ -160,8 +161,9 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
             raw_date = date_el.get("datetime") or date_el.get_text(strip=True)
         parsed_date = parse_date(raw_date)
 
-        # Decision type — look in the field or infer from title
+        # Decision type — new structure: first <li> in .card-footer .tag-list
         type_el = row.select_one(
+            ".card-footer ul.tag-list li, "
             ".field--name-field-type-de-decision, .field--type-entity-reference"
         )
         decision_type = None
@@ -203,18 +205,27 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
 
 
 def get_total_pages(soup: BeautifulSoup) -> int:
+    # New Bootstrap pagination (2026)
+    pager = soup.select_one("ul.pagination")
+    if pager:
+        # Find the highest page= value among all pagination links
+        max_page = 0
+        for a in pager.select("a.page-link"):
+            m = re.search(r"page=(\d+)", a.get("href", ""))
+            if m:
+                max_page = max(max_page, int(m.group(1)))
+        if max_page:
+            return max_page + 1
+    # Legacy Drupal pager fallback
     pager = soup.select_one("nav.pager ul, .pager__items")
     if not pager:
         return 1
-    items = pager.select("li")
-    # Last page link
     last = pager.select_one("li.pager__item--last a, li:last-child a")
     if last:
-        href = last.get("href", "")
-        m = re.search(r"page=(\d+)", href)
+        m = re.search(r"page=(\d+)", last.get("href", ""))
         if m:
             return int(m.group(1)) + 1
-    return max(len(items) - 2, 1)  # rough estimate
+    return max(len(pager.select("li")) - 2, 1)
 
 
 def scrape_all() -> list[dict]:

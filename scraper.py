@@ -109,19 +109,23 @@ def parse_date(raw: str) -> str | None:
     return None
 
 
-def fetch_publication_date(url: str) -> str | None:
-    """Fetch the 'Publié le' date from an individual decision page."""
+def fetch_page_info(url: str) -> tuple[str | None, list[str]]:
+    """Fetch publication date and channel mentions from an individual decision page."""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=30)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
+        pub_date = None
         for tag in soup.find_all(string=re.compile(r"Publié\s+le", re.I)):
             m = re.search(r"Publié\s+le\s+(\d{1,2}\s+\w+\s+\d{4})", str(tag), re.I)
             if m:
-                return parse_date(m.group(1))
+                pub_date = parse_date(m.group(1))
+                break
+        channels = detect_channels(soup.get_text())
+        return pub_date, channels
     except Exception:
         pass
-    return None
+    return None, []
 
 
 def fetch_page(page: int = 0) -> BeautifulSoup:
@@ -175,18 +179,19 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
         if not decision_type:
             continue
 
-        # Channels
+        # Channels — try listing title first, fall back to full page text
         channels = detect_channels(title)
+        pub_date = None
+        if url:
+            pub_date, page_channels = fetch_page_info(url)
+            time.sleep(0.5)
+            if not channels and page_channels:
+                channels = page_channels
         if not channels:
             continue
 
-        # Fetch the real publication date from the decision page
-        if url:
-            pub_date = fetch_publication_date(url)
-            time.sleep(0.5)
-            if pub_date:
-                parsed_date = pub_date
-
+        if pub_date:
+            parsed_date = pub_date
         if not parsed_date:
             continue
 

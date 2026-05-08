@@ -264,6 +264,17 @@
     .cell-title a:hover { color: #60a5fa; }
     .cell-medium { white-space: nowrap; font-size: 0.82rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
+    .row-detail { display: none; }
+    @media (max-width: 640px) {
+      .col-title { display: none; }
+      .cell-title { display: none; }
+      .row-detail { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 5px; line-height: 1.35; }
+      .row-detail a { color: inherit; text-decoration: none; }
+      .row-detail a:hover { color: #60a5fa; }
+      .cell-medium { max-width: 110px; }
+      thead th { white-space: normal; }
+    }
+
     .no-results { padding: 48px; text-align: center; color: var(--muted); font-size: 0.9rem; }
 
     .methodo {
@@ -375,7 +386,7 @@
             <th data-tab-scope="arcom" data-col="date" class="sorted">Date <span class="sort-icon">↓</span></th>
             <th data-tab-scope="arcom" data-col="channel">Chaîne <span class="sort-icon">↕</span></th>
             <th data-tab-scope="arcom" data-col="type">Type <span class="sort-icon">↕</span></th>
-            <th style="width:100%">Décision</th>
+            <th class="col-title" style="width:100%">Décision</th>
           </tr>
         </thead>
         <tbody id="arcom-table-body"></tbody>
@@ -445,7 +456,7 @@
             <th data-tab-scope="cdjm" data-col="date" class="sorted">Date <span class="sort-icon">↓</span></th>
             <th data-tab-scope="cdjm" data-col="medium">Média <span class="sort-icon">↕</span></th>
             <th data-tab-scope="cdjm" data-col="status">Verdict <span class="sort-icon">↕</span></th>
-            <th style="width:100%">Sujet</th>
+            <th class="col-title" style="width:100%">Sujet</th>
           </tr>
         </thead>
         <tbody id="cdjm-table-body"></tbody>
@@ -595,7 +606,7 @@ function renderArcomTable() {
     return `<tr>
       <td class="cell-date">${fmtDate(d.date)}</td>
       <td class="cell-channel" data-ch="${escHtml(d.channel)}">${escHtml(d.channel)}</td>
-      <td>${badge}</td>
+      <td>${badge}<div class="row-detail">${link}</div></td>
       <td class="cell-title">${link}</td></tr>`;
   }).join('');
 }
@@ -781,7 +792,7 @@ function renderCdjmTable() {
     return `<tr>
       <td class="cell-date">${fmtDate(a.date)}</td>
       <td class="cell-medium" title="${escHtml(a.medium)}">${escHtml(a.medium)}</td>
-      <td>${badge}</td>
+      <td>${badge}<div class="row-detail">${topic}</div></td>
       <td class="cell-title">${topic}</td></tr>`;
   }).join('');
 }

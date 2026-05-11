@@ -52,6 +52,19 @@ TYPE_MAP = {
     "intervention": "Intervention",
 }
 
+TYPE_STRENGTH = {
+    "Intervention": 1,
+    "Mise en garde": 2,
+    "Mise en demeure": 3,
+    "Sanction financière": 4,
+}
+
+# If the listing title matches a key, remove the listed channels from page-body detection results.
+# Prevents false positives where the page body mentions a channel that isn't the actual subject.
+TITLE_EXCLUDES = {
+    r"\bRadio\s+France\b": {"Franceinfo"},
+}
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -64,11 +77,12 @@ OUTPUT_FILE = Path(__file__).parent / "decisions.json"
 
 
 def normalize_type(raw: str) -> str | None:
+    """Return the strongest matching type found in raw text."""
     raw_lower = raw.lower()
-    for pattern, normalized in TYPE_MAP.items():
-        if re.search(pattern, raw_lower):
-            return normalized
-    return None
+    found = [normalized for pattern, normalized in TYPE_MAP.items() if re.search(pattern, raw_lower)]
+    if not found:
+        return None
+    return max(found, key=lambda t: TYPE_STRENGTH.get(t, 0))
 
 
 def detect_channels(title: str) -> list[str]:
@@ -165,16 +179,13 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
             raw_date = date_el.get("datetime") or date_el.get_text(strip=True)
         parsed_date = parse_date(raw_date)
 
-        # Decision type — new structure: first <li> in .card-footer .tag-list
-        type_el = row.select_one(
+        # Decision type — collect all <li> tags and take the strongest type
+        type_els = row.select(
             ".card-footer ul.tag-list li, "
             ".field--name-field-type-de-decision, .field--type-entity-reference"
         )
-        decision_type = None
-        if type_el:
-            decision_type = normalize_type(type_el.get_text(strip=True))
-        if not decision_type:
-            decision_type = normalize_type(title)
+        type_text = " ".join(el.get_text(strip=True) for el in type_els)
+        decision_type = normalize_type(type_text) or normalize_type(title)
 
         if not decision_type:
             continue
@@ -186,7 +197,11 @@ def parse_decisions(soup: BeautifulSoup) -> list[dict]:
             pub_date, page_channels = fetch_page_info(url)
             time.sleep(0.5)
             if not channels and page_channels:
-                channels = page_channels
+                excluded = set()
+                for excl_pat, excl_ch in TITLE_EXCLUDES.items():
+                    if re.search(excl_pat, title, re.I):
+                        excluded.update(excl_ch)
+                channels = [c for c in page_channels if c not in excluded]
         if not channels:
             continue
 
